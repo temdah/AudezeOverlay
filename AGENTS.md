@@ -7,7 +7,8 @@ actual source and working tree; documentation and old handoffs can be stale.
 
 ## Product and scope
 
-Audeze Overlay is a small Rust / Win32 application for Windows 11. It reads and
+Audeze Overlay is a small Rust application for Windows 11 (Win32) and, experimentally,
+Linux (Wayland). It reads and
 controls supported headset settings directly through a USB dongle, displays a
 native overlay, and works without Audeze App running. Keep the UI responsive and
 the idle footprint small.
@@ -81,7 +82,9 @@ interface, trait, or service wrapper for every struct.
 | `src/device/worker.rs` | Scheduling, replies, readbacks and reconnection |
 | `src/ui/draw.rs`, `src/ui/view/` | Drawing primitives and state-to-pixels/hit regions |
 | `src/ui/presentation.rs` | Presentation and animation state |
-| `src/ui/window.rs`, `src/ui/window/` | Window lifetime, events and application coordination |
+| `src/ui/app.rs`, `src/ui/app/`, `src/ui/shell.rs` | Portable application coordination and the `Shell` interface |
+| `src/ui/win32.rs`, `src/ui/win32/` | Windows window lifetime, events and presentation |
+| `src/ui/wayland.rs`, `src/ui/wayland/` | Linux window, input, portals and tray |
 | `src/platform/` | Windows-specific services such as startup and composition |
 | `src/bin/` | Explicit diagnostic/development executables |
 

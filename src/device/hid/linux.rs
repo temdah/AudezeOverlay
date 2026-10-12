@@ -154,6 +154,12 @@ fn enumerate_in(
         let Some((input_len, output_len)) = control_lengths(&node.join("report_descriptor")) else {
             continue;
         };
+        // HIDIOCGINPUT is issued with a fixed 64-byte buffer (see `get_input_report`),
+        // so a longer control report could never be read; skip it instead of
+        // letting every read fail later.
+        if input_len > 64 {
+            continue;
+        }
         let path: PathBuf = dev.join(&name);
         match open(&path) {
             Ok(file) => candidates.push(Candidate {

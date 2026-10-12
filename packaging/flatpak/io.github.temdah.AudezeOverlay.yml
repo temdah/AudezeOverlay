@@ -1,0 +1,52 @@
+# Flatpak manifest, written to follow Flathub's rules: built offline from
+# vendored cargo sources, no network at build time. It is not submitted to
+# Flathub. Build and run it locally with:
+#   flatpak-builder --user --install --force-clean build-dir packaging/flatpak/io.github.temdah.AudezeOverlay.yml
+# A Flathub submission would replace the `dir` source with a `git` source at a
+# release tag. cargo-sources.json comes from Cargo.lock (tools/sync-cargo-sources.sh).
+app-id: io.github.temdah.AudezeOverlay
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: audeze-overlay
+
+finish-args:
+  # The overlay is a Wayland layer-shell surface; there is no X11 fallback.
+  - --socket=wayland
+  # The headset's /dev/hidraw node. Flatpak has no narrower HID permission.
+  - --device=all
+  # The tray icon.
+  - --talk-name=org.kde.StatusNotifierWatcher
+
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/audeze-overlay/cargo
+
+modules:
+  - name: audeze-overlay
+    buildsystem: simple
+    build-commands:
+      - cargo --offline fetch --manifest-path Cargo.toml --locked
+      - cargo --offline build --release --locked --bin audeze-overlay
+      - install -Dm755 target/release/audeze-overlay /app/bin/audeze-overlay
+      - install -Dm644 packaging/linux/io.github.temdah.AudezeOverlay.desktop /app/share/applications/io.github.temdah.AudezeOverlay.desktop
+      - install -Dm644 packaging/flatpak/io.github.temdah.AudezeOverlay.metainfo.xml /app/share/metainfo/io.github.temdah.AudezeOverlay.metainfo.xml
+      - for size in 48 128 256; do install -Dm644 packaging/linux/icons/${size}x${size}/apps/io.github.temdah.AudezeOverlay.png /app/share/icons/hicolor/${size}x${size}/apps/io.github.temdah.AudezeOverlay.png; done
+      - install -Dm644 LICENSE /app/share/licenses/io.github.temdah.AudezeOverlay/LICENSE
+      - install -Dm644 THIRD-PARTY-NOTICES.md /app/share/licenses/io.github.temdah.AudezeOverlay/THIRD-PARTY-NOTICES.md
+      - python3 -I tools/dependency-notices.py /app/share/licenses/io.github.temdah.AudezeOverlay/DEPENDENCY-LICENSES.txt
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - .git
+          - target
+          - dist
+          - diagnostics
+          - build-dir
+          - .flatpak-builder
+          - .tools
+      - cargo-sources.json

@@ -7,7 +7,7 @@
 //! frame, menus, confirmations, a file chooser, the global shortcut, the tray
 //! icon and autostart.
 use super::*;
-use std::{any::Any, path::PathBuf};
+use std::any::Any;
 
 impl From<RECT> for Rect {
     fn from(r: RECT) -> Self {
@@ -397,8 +397,8 @@ impl Shell for WinShell {
         }
     }
     /// Asks for a profile file to open or to write. `Ok(None)` means cancelled.
-    fn choose_file(&mut self, save: bool) -> std::result::Result<Option<PathBuf>, String> {
-        crate::platform::profile_dialog::choose(self.hwnd, save)
+    fn choose_file(&mut self, save: bool) -> std::result::Result<FileSelection, String> {
+        crate::platform::profile_dialog::choose(self.hwnd, save).map(FileSelection::Ready)
     }
 
     // ---- Global shortcut. Only one binding is active at a time.

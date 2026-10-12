@@ -5,7 +5,7 @@ mod draw;
 use tiny_skia::*;
 
 fn main() {
-    let painter = draw::Painter::new();
+    let painter = draw::Painter::try_new().expect("A usable font is required for generating icons");
     let mut images = Vec::new();
     for size in [16u32, 24, 32, 48, 64, 128, 256] {
         let mut pix = Pixmap::new(size, size).unwrap();

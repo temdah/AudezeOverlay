@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Audeze Overlay
+GenericName=Headset overlay
+Comment=See what your Audeze Maxwell headset is doing without leaving the game
+Exec=audeze-overlay
+Icon=io.github.temdah.AudezeOverlay
+Terminal=false
+Categories=AudioVideo;Audio;
+Keywords=headset;audeze;maxwell;overlay;eq;
+StartupNotify=false

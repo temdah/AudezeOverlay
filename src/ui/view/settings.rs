@@ -160,6 +160,7 @@ pub(super) fn settings_page(
         0 => "Change how the overlay looks. Text and icons always stay solid.",
         1 => "Use + to add cards, … to remove. Drag to move; corners resize.",
         2 => "Choose when the overlay appears while you play.",
+        3 if !cfg!(windows) => "Show or hide the overlay from anywhere.",
         3 => "Record a key or a modifier + key, then save it.",
         4 => "The USB dongle connects directly. The Audeze app can stay closed.",
         5 => "Choose an EQ, pin quick switches, or tune a custom headset slot.",
@@ -225,7 +226,11 @@ pub(super) fn settings_page(
                 505.,
                 w,
                 "Backdrop blur strength",
-                "Adjusts the Windows acrylic effect. 0 turns it off.",
+                if cfg!(windows) {
+                    "Adjusts the Windows acrylic effect. 0 turns it off."
+                } else {
+                    "Adjusts the backdrop blur. 0 turns it off."
+                },
                 "blur",
                 &format!("{}%", v.config.blur_strength),
                 None,
@@ -399,84 +404,110 @@ pub(super) fn settings_page(
                 false,
                 false,
             );
-            let binding = if let Some((mods, key)) = v.recorded_key.filter(|_| v.recording) {
-                audeze_overlay::config::hotkey_label(mods, key)
-            } else {
-                v.config.hotkey_label()
-            };
-            button(
-                c,
-                hits,
-                v,
-                Box2::new(218., 272., w - 250., 50.),
-                if v.recording && v.recorded_key.is_none() {
-                    "Press your shortcut…"
+            if cfg!(windows) {
+                let binding = if let Some((mods, key)) = v.recorded_key.filter(|_| v.recording) {
+                    audeze_overlay::config::hotkey_label(mods, key)
                 } else {
-                    &binding
-                },
-                Action::Record,
-                false,
-            );
-            button(
-                c,
-                hits,
-                v,
-                Box2::new(218., 332., 190., 38.),
-                if v.recording {
-                    "Save shortcut"
-                } else {
-                    "Record shortcut"
-                },
-                if v.recording {
-                    Action::EndRecord
-                } else {
-                    Action::Record
-                },
-                false,
-            );
-            if v.recording {
+                    v.config.hotkey_label()
+                };
                 button(
                     c,
                     hits,
                     v,
-                    Box2::new(420., 332., 150., 38.),
-                    "Discard",
-                    Action::DiscardRecord,
+                    Box2::new(218., 272., w - 250., 50.),
+                    if v.recording && v.recorded_key.is_none() {
+                        "Press your shortcut…"
+                    } else {
+                        &binding
+                    },
+                    Action::Record,
+                    false,
+                );
+                button(
+                    c,
+                    hits,
+                    v,
+                    Box2::new(218., 332., 190., 38.),
+                    if v.recording {
+                        "Save shortcut"
+                    } else {
+                        "Record shortcut"
+                    },
+                    if v.recording {
+                        Action::EndRecord
+                    } else {
+                        Action::Record
+                    },
+                    false,
+                );
+                if v.recording {
+                    button(
+                        c,
+                        hits,
+                        v,
+                        Box2::new(420., 332., 150., 38.),
+                        "Discard",
+                        Action::DiscardRecord,
+                        false,
+                    );
+                }
+                c.text(
+                    "Examples: Home, Alt + Home, Ctrl + F9",
+                    Box2::new(218., 388., w - 250., 28.),
+                    16.,
+                    FG,
+                    false,
+                    false,
+                );
+                c.text(
+                    "A shortcut already used by another app will be rejected.",
+                    Box2::new(218., 428., w - 250., 28.),
+                    15.,
+                    SUB,
+                    false,
+                    false,
+                );
+                c.text(
+                    "Your previous shortcut stays active until a new one is accepted.",
+                    Box2::new(218., 458., w - 250., 28.),
+                    15.,
+                    SUB,
+                    false,
+                    false,
+                );
+            } else {
+                // The desktop owns global shortcuts here; it shows and changes them.
+                for (top, line, size, color) in [
+                    (272., "Your desktop manages this shortcut.", 18., FG),
+                    (
+                        306.,
+                        "Change it in System Settings > Shortcuts > Audeze Overlay.",
+                        15.,
+                        SUB,
+                    ),
+                    (336., "Or bind the command below to any key.", 15., SUB),
+                    (376., "audeze-overlay --toggle", 16., FG),
+                ] {
+                    c.text(
+                        line,
+                        Box2::new(218., top, w - 250., 28.),
+                        size,
+                        color,
+                        false,
+                        false,
+                    );
+                }
+            }
+            if cfg!(windows) {
+                c.text(
+                    "Escape cancels. Recording stays open until you save or discard.",
+                    Box2::new(218., 508., w - 250., 28.),
+                    15.,
+                    SUB,
+                    false,
                     false,
                 );
             }
-            c.text(
-                "Examples: Home, Alt + Home, Ctrl + F9",
-                Box2::new(218., 388., w - 250., 28.),
-                16.,
-                FG,
-                false,
-                false,
-            );
-            c.text(
-                "A shortcut already used by another app will be rejected.",
-                Box2::new(218., 428., w - 250., 28.),
-                15.,
-                SUB,
-                false,
-                false,
-            );
-            c.text(
-                "Your previous shortcut stays active until a new one is accepted.",
-                Box2::new(218., 458., w - 250., 28.),
-                15.,
-                SUB,
-                false,
-                false,
-            );
-            c.text(
-                "Escape cancels. Recording stays open until you save or discard.",
-                Box2::new(218., 508., w - 250., 28.),
-                15.,
-                SUB,
-                false,
-                false,
-            );
         }
         4 => {
             toggle_row(
@@ -485,7 +516,11 @@ pub(super) fn settings_page(
                 v,
                 178.,
                 w,
-                "Launch with Windows",
+                if cfg!(windows) {
+                    "Launch with Windows"
+                } else {
+                    "Launch at login"
+                },
                 "Starts in the tray when you sign in. You can turn this off here.",
                 "startup",
                 v.config.autostart,

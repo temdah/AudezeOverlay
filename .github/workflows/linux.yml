@@ -1,7 +1,7 @@
 name: Linux build and checks
 
-# Checks only. Nothing here publishes a release or replaces a download; Windows
-# packaging and releases stay in windows.yml.
+# Checks and a test archive. Nothing here publishes a release or replaces a
+# download; Windows packaging and releases stay in windows.yml.
 on:
   push:
     branches: ['**']
@@ -27,7 +27,9 @@ jobs:
         # DejaVu is the fallback UI font when fontconfig names none.
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends fonts-dejavu-core fontconfig
+          sudo apt-get install -y --no-install-recommends fonts-dejavu-core fontconfig \
+            libxkbcommon-dev pkg-config appstream desktop-file-utils \
+            python3
       - name: Set up Rust
         run: |
           rustup update stable --no-self-update
@@ -40,10 +42,29 @@ jobs:
           cargo test --locked --all-targets --all-features
       - name: Validate the udev rule
         run: udevadm verify packaging/linux/70-audeze-overlay.rules
+      - name: Validate the desktop entry and AppStream metadata
+        run: |
+          desktop-file-validate packaging/linux/io.github.temdah.AudezeOverlay.desktop
+          appstreamcli validate --no-net packaging/flatpak/io.github.temdah.AudezeOverlay.metainfo.xml
+      - name: Check the Flatpak cargo sources match Cargo.lock
+        run: |
+          tools/sync-cargo-sources.sh --check
+          python3 -I tools/test-linux-packaging.py
       - name: Build and check rendering without a headset
         run: |
           cargo build --locked --release --bin audeze-overlay --bin preview-layouts --bin verify-direct
           target/release/preview-layouts
+      - name: Package the Linux archive
+        run: tools/package-linux.sh
+      - name: Upload the Linux archive
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: Audeze-Overlay-Linux-x86_64
+          path: |
+            dist/Audeze-Overlay-Linux-x86_64.tar.gz
+            dist/Audeze-Overlay-Linux-x86_64.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload layout previews
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -52,3 +73,22 @@ jobs:
           path: diagnostics/layout-*.png
           if-no-files-found: ignore
           retention-days: 14
+
+  flatpak:
+    # Builds the Flatpak offline from the vendored Cargo sources, as Flathub would,
+    # and keeps the bundle as a test artifact. It is not published anywhere.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
+        with:
+          bundle: Audeze-Overlay.flatpak
+          manifest-path: packaging/flatpak/io.github.temdah.AudezeOverlay.yml
+          artifact-name: Audeze-Overlay-flatpak-x86_64
+          cache-key: flatpak-builder-${{ github.sha }}

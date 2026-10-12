@@ -15,6 +15,7 @@ pub(in crate::ui) enum Key {
 
 /// How the notification-area icon was used.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg(windows)]
 pub(in crate::ui) enum TrayEvent {
     /// Context menu requested.
     Menu,
@@ -119,6 +120,7 @@ pub(in crate::ui) fn displays_changed(app: &mut App) {
     request_draw(app);
 }
 
+#[cfg(windows)]
 pub(in crate::ui) fn close_requested(app: &mut App) {
     hide(app);
 }
@@ -328,6 +330,7 @@ pub(in crate::ui) fn timer_fired(app: &mut App, timer: Timer) {
         }
         Timer::Animation => animation_tick(app),
         // Only the native self-test uses this timer, and it handles it itself.
+        #[cfg(windows)]
         Timer::SelfTest => (),
     }
 }
@@ -391,12 +394,14 @@ pub(in crate::ui) fn command_finished(app: &mut App) {
 }
 
 /// USB topology may have changed; the worker re-enumerates off this thread.
+#[cfg(windows)]
 pub(in crate::ui) fn devices_changed(app: &mut App) {
     if let Some(controller) = &app.controller {
         controller.devices_changed();
     }
 }
 
+#[cfg(windows)]
 pub(in crate::ui) fn tray_used(app: &mut App, event: TrayEvent) {
     match event {
         TrayEvent::Menu => menu(app),
@@ -414,6 +419,7 @@ pub(in crate::ui) fn open_requested(app: &mut App) {
 }
 
 /// The desktop's notification area was recreated; register the icon again.
+#[cfg(windows)]
 pub(in crate::ui) fn tray_host_restarted(app: &mut App) {
     app.tray_registration = Default::default();
     ensure_tray(app);

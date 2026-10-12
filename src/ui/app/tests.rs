@@ -22,6 +22,7 @@ struct Fake {
     menus: RefCell<VecDeque<Option<u32>>>,
     confirms: RefCell<VecDeque<Choice>>,
     files: RefCell<VecDeque<Result<Option<PathBuf>, String>>>,
+    deferred_file: Cell<bool>,
     cursors: RefCell<Vec<Cursor>>,
     moves: RefCell<Vec<(i32, i32)>>,
     blur: Cell<Option<u8>>,
@@ -46,6 +47,7 @@ impl Fake {
             menus: Default::default(),
             confirms: Default::default(),
             files: Default::default(),
+            deferred_file: Cell::new(false),
             cursors: Default::default(),
             moves: Default::default(),
             blur: Cell::new(None),
@@ -66,6 +68,7 @@ impl Shell for Fake {
     fn as_any(&self) -> &dyn Any {
         self
     }
+    #[cfg(windows)]
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
     }
@@ -157,8 +160,16 @@ impl Shell for Fake {
             .pop_front()
             .unwrap_or(Choice::Cancel)
     }
-    fn choose_file(&mut self, _: bool) -> Result<Option<PathBuf>, String> {
-        self.files.borrow_mut().pop_front().unwrap_or(Ok(None))
+    fn choose_file(&mut self, _: bool) -> Result<FileSelection, String> {
+        if self.deferred_file.get() {
+            Ok(FileSelection::Pending)
+        } else {
+            self.files
+                .borrow_mut()
+                .pop_front()
+                .unwrap_or(Ok(None))
+                .map(FileSelection::Ready)
+        }
     }
     fn register_hotkey(&mut self, _: u32, _: u32) -> bool {
         self.hotkey_available.get()
@@ -646,4 +657,45 @@ fn every_setting_can_be_stepped_both_ways_without_breaking_the_layout() {
     assert_eq!(app.config.text_scale, 120);
     assert_eq!(app.config.blur_strength, 80);
     assert_eq!(app.config.duration_ms, 4000);
+}
+
+#[test]
+fn deferred_file_selection_can_cancel_and_retry_without_replacing_the_request() {
+    let mut app = open_app();
+    fake(&app).deferred_file.set(true);
+    fake(&app).menus.borrow_mut().push_back(Some(1));
+    profile_menu(&mut app);
+    assert!(app.pending_profile_file.is_some());
+    fake(&app).menus.borrow_mut().push_back(Some(1));
+    profile_menu(&mut app);
+    assert!(app.note.text().contains("Finish or cancel"));
+    profile_file_selected(&mut app, Ok(None));
+    assert!(app.pending_profile_file.is_none());
+    fake(&app).menus.borrow_mut().push_back(Some(1));
+    profile_menu(&mut app);
+    profile_file_selected(&mut app, Err("Portal unavailable".into()));
+    assert!(app.pending_profile_file.is_none());
+    assert!(app.note.text().contains("Portal unavailable"));
+}
+
+#[test]
+fn deferred_export_keeps_the_tuning_selected_when_the_dialog_opened() {
+    let mut app = open_app();
+    fake(&app).deferred_file.set(true);
+    let baseline = audeze_overlay::eq::sample(6);
+    app.eq_editor.selected = 6;
+    app.eq_editor.receive(baseline, 1);
+    fake(&app).menus.borrow_mut().push_back(Some(2));
+    profile_menu(&mut app);
+    app.eq_editor.selected = 7;
+    app.eq_editor.receive(audeze_overlay::eq::sample(7), 2);
+    let path = std::env::temp_dir().join(format!(
+        "audeze-deferred-export-{}.json",
+        std::process::id()
+    ));
+    profile_file_selected(&mut app, Ok(Some(path.clone())));
+    let saved = audeze_overlay::eq::profiles::read(&path, None).unwrap();
+    assert_eq!(saved.snapshot(6).unwrap(), baseline);
+    assert!(app.pending_profile_file.is_none());
+    std::fs::remove_file(path).unwrap();
 }

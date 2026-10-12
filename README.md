@@ -15,6 +15,9 @@ additional hardware is not yet verified and non-ANC custom EQ editing is disable
 [What's new](https://github.com/temdah/AudezeOverlay/releases/latest) ·
 [Documentation](docs/README.md)
 
+**Linux (experimental, Wayland):** see [Linux](docs/LINUX.md). Development builds
+are produced by CI as a test archive; there is no Linux release download yet.
+
 ## One overlay, your layout
 
 Arrange it your way. Resize, rearrange, and hide cards, then adjust transparency

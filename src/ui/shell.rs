@@ -5,9 +5,18 @@
 //! logic can ask for is a method here, so the logic never sees a window handle,
 //! a surface or a message loop, and can be tested with a fake shell.
 //!
-//! Modal calls (`popup_menu`, `confirm`, `choose_file`) return once the user has
-//! answered. A shell may run its own nested event loop to do that.
-use std::{any::Any, path::PathBuf};
+//! Menus and confirmations are modal. File selection can finish immediately or
+//! deliver a later result on the UI loop, keeping portal waits off that loop.
+use std::any::Any;
+#[cfg(any(windows, test))]
+use std::path::PathBuf;
+
+pub enum FileSelection {
+    #[cfg(any(windows, test))]
+    Ready(Option<PathBuf>),
+    #[cfg(any(target_os = "linux", test))]
+    Pending,
+}
 
 /// A rectangle in physical (device) pixels. Edges are exclusive on the right and
 /// bottom, so `width` is `right - left`.
@@ -39,7 +48,7 @@ pub struct Monitor {
 }
 
 /// The timers the application logic can ask for.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Timer {
     /// Drives animation frames; runs only while something moves.
     Animation,
@@ -50,6 +59,7 @@ pub enum Timer {
     /// Retries tray registration while the desktop shell starts.
     TrayRetry,
     /// Steps the opt-in native self-test.
+    #[cfg(windows)]
     SelfTest,
 }
 
@@ -96,6 +106,7 @@ pub enum Region {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuOrigin {
     Panel,
+    #[cfg(windows)]
     TrayIcon,
 }
 
@@ -157,7 +168,9 @@ pub enum Choice {
 
 pub trait Shell: Any {
     /// Lets platform-specific code (and only that) reach its own shell type.
+    #[cfg(any(windows, test))]
     fn as_any(&self) -> &dyn Any;
+    #[cfg(windows)]
     fn as_any_mut(&mut self) -> &mut dyn Any;
 
     // ---- Timers and redraw requests.
@@ -221,11 +234,12 @@ pub trait Shell: Any {
     fn popup_menu(&mut self, entries: &[MenuEntry], origin: MenuOrigin) -> Option<u32>;
     fn confirm(&mut self, title: &str, message: &str, buttons: Buttons) -> Choice;
     /// Asks for a profile file to open or to write. `Ok(None)` means cancelled.
-    fn choose_file(&mut self, save: bool) -> Result<Option<PathBuf>, String>;
+    fn choose_file(&mut self, save: bool) -> Result<FileSelection, String>;
 
     // ---- Global shortcut. Only one binding is active at a time. `modifiers` and
-    // `key` are stored in the preferences: bit 1 Alt, 2 Ctrl, 4 Shift, and a
-    // Windows virtual-key code.
+    // `key` are stored in the preferences: bit 1 Alt, 2 Ctrl, 4 Shift, and a key
+    // code in the preference format (Windows virtual-key numbering); a shell on
+    // another platform translates it to its own key names.
     fn register_hotkey(&mut self, modifiers: u32, key: u32) -> bool;
     fn unregister_hotkey(&mut self);
     /// Switches to a new binding without a gap: the previous one keeps working

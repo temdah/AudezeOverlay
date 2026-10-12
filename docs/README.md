@@ -8,7 +8,7 @@ Start with the [project overview and downloads](../README.md).
 | [Performance measurements](PERFORMANCE.md) | Measured comparison, methodology, trial variability and reproduction |
 | [Device integration and compatibility](DEVICE_AND_COMPATIBILITY.md) | USB scheduling, latency limits, rendering, anti-cheat boundaries and visual assets |
 | [Device profiles and validation](DEVICE_PROTOCOL.md) | Experimental model identities, protocol evidence, wired connections and remaining hardware checks |
-| [Linux](LINUX.md) | Status of the Linux transport, hardware evidence, the udev rule and diagnostics |
+| [Linux](LINUX.md) | Wayland overlay, install, Flatpak, hardware evidence, the udev rule and diagnostics |
 | [Build, diagnostics and releases](DEVELOPMENT.md) | Local builds, diagnostic modes, packaging and GitHub releases |
 | [Architecture and Rust reading guide](ARCHITECTURE.md) | Module responsibilities, ownership and interaction flow |
 | [Contributing](../CONTRIBUTING.md) | Development checks and commit conventions |

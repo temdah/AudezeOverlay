@@ -14,7 +14,8 @@ use std::time::{Duration, Instant};
 
 fn main() {
     let config = Config::default();
-    let mut painter = draw::Painter::new();
+    let mut painter =
+        draw::Painter::try_new().expect("A usable font is required for the benchmark");
     let mut motion = presentation::Presentation::default();
     let mut sound = SoundState::default();
     let start = Instant::now();

@@ -116,6 +116,7 @@ fn usable_font_file(path: &str) -> Option<PathBuf> {
 const NO_UI_FONT: &str = "No usable UI font was found. Install a sans-serif TrueType font \
 (for example DejaVu Sans or Noto Sans) and make sure fontconfig can find it.";
 impl Painter {
+    #[cfg(any(windows, test))]
     pub fn new() -> Self {
         Self::try_new().unwrap_or_else(|error| panic!("{error}"))
     }

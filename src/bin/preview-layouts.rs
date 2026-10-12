@@ -15,7 +15,7 @@ use draw::Painter;
 
 fn main() {
     std::fs::create_dir_all("diagnostics").expect("diagnostics directory");
-    let mut painter = Painter::new();
+    let mut painter = Painter::try_new().expect("A usable font is required for rendering previews");
     showcase();
     let sound = SoundState {
         mix_revision: 0,
@@ -439,7 +439,7 @@ fn showcase() {
         eprintln!("Skipping the documentation showcase: it needs Segoe UI (Windows).");
         return;
     };
-    let mut painter = Painter::new();
+    let mut painter = Painter::try_new().expect("A usable font is required for rendering previews");
     painter.fonts = [regular, semibold].map(|bytes| {
         fontdue::Font::from_bytes(bytes, fontdue::FontSettings::default())
             .expect("valid public font")

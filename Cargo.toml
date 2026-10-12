@@ -2,7 +2,7 @@
 name = "audeze-overlay"
 version = "1.0.5"
 edition = "2021"
-description = "A small native Windows sound-status overlay for Audeze Maxwell"
+description = "A small native sound-status overlay for Audeze Maxwell headsets (Windows, and Linux on Wayland)"
 license = "MIT"
 
 [features]
@@ -44,7 +44,12 @@ hidapi = { version = "2.6.7", default-features = false, features = ["windows-nat
 
 # Linux talks to the kernel's hidraw, poll and netlink interfaces directly.
 [target.'cfg(target_os = "linux")'.dependencies]
+ashpd = { version = "0.13", default-features = false, features = ["async-io", "file_chooser", "global_shortcuts", "background"] }
+async-io = "2"
+futures-lite = "2"
+ksni = { version = "0.3", default-features = false, features = ["async-io", "blocking"] }
 rustix = { version = "1.1", features = ["event", "fs", "net"] }
+smithay-client-toolkit = "0.21"
 
 [build-dependencies]
 embed-resource = "3.0.11"
@@ -56,3 +61,63 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+# Linux only: the D-Bus and Wayland client crates are cold code (a handful of calls
+# at startup and on user actions), so optimize them for size. Drawing, fonts and
+# the application stay at opt-level 3. These crates are not in Windows builds.
+[profile.release.package.zbus]
+opt-level = "z"
+[profile.release.package.zvariant]
+opt-level = "z"
+[profile.release.package.zvariant_utils]
+opt-level = "z"
+[profile.release.package.zbus_names]
+opt-level = "z"
+[profile.release.package.ksni]
+opt-level = "z"
+[profile.release.package.ashpd]
+opt-level = "z"
+[profile.release.package.async-io]
+opt-level = "z"
+[profile.release.package.async-process]
+opt-level = "z"
+[profile.release.package.async-executor]
+opt-level = "z"
+[profile.release.package.async-task]
+opt-level = "z"
+[profile.release.package.async-lock]
+opt-level = "z"
+[profile.release.package.async-channel]
+opt-level = "z"
+[profile.release.package.async-broadcast]
+opt-level = "z"
+[profile.release.package.blocking]
+opt-level = "z"
+[profile.release.package.event-listener]
+opt-level = "z"
+[profile.release.package.futures-lite]
+opt-level = "z"
+[profile.release.package.futures-util]
+opt-level = "z"
+[profile.release.package.wayland-client]
+opt-level = "z"
+[profile.release.package.wayland-backend]
+opt-level = "z"
+[profile.release.package.wayland-protocols]
+opt-level = "z"
+[profile.release.package.wayland-protocols-wlr]
+opt-level = "z"
+[profile.release.package.wayland-protocols-misc]
+opt-level = "z"
+[profile.release.package.wayland-protocols-experimental]
+opt-level = "z"
+[profile.release.package.smithay-client-toolkit]
+opt-level = "z"
+[profile.release.package.calloop]
+opt-level = "z"
+[profile.release.package.polling]
+opt-level = "z"
+[profile.release.package.xkbcommon]
+opt-level = "z"
+[profile.release.package.memmap2]
+opt-level = "z"

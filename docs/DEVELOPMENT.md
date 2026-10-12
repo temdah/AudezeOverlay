@@ -6,6 +6,22 @@ Run commands from the repository root. Read [CONTRIBUTING](../CONTRIBUTING.md) a
 
 ## Build and verify
 
+On Linux, install Rust, `libxkbcommon-devel` (or your distribution's equivalent)
+and a C toolchain, then:
+
+```sh
+cargo fmt --all --check
+cargo clippy --locked --all-targets --all-features -- -D warnings
+cargo test --locked --all-targets --all-features
+cargo build --locked --release --bin audeze-overlay
+target/release/audeze-overlay --demo      # sample data, no headset needed
+tools/package-linux.sh                    # dist/Audeze-Overlay-Linux-x86_64.tar.gz
+```
+
+Use a release build to try the overlay: debug builds are too slow for software
+rendering. Windows steps follow. See [Linux](LINUX.md) for the compositor,
+Flatpak and hardware notes.
+
 
 ```powershell
 cargo test

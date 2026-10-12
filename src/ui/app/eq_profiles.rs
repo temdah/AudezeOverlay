@@ -1,6 +1,13 @@
 //! Local EQ library and file actions. Loading explicitly previews a custom slot.
 use super::*;
 use audeze_overlay::eq::profiles::{self, Profile};
+use audeze_overlay::eq::Snapshot;
+use std::path::PathBuf;
+
+pub(super) enum ProfileFile {
+    Import(Option<Snapshot>),
+    Export(Profile),
+}
 
 fn current_profile(app: &App) -> std::result::Result<Profile, String> {
     let draft = app
@@ -67,26 +74,63 @@ pub(in crate::ui) fn save_profile_copy(app: &mut App) {
 }
 
 fn import_profile(app: &mut App) -> std::result::Result<(), String> {
-    let Some(path) = app.shell.choose_file(false)? else {
-        return Ok(());
-    };
     let baseline = app.eq_editor.draft().map(|d| d.value);
-    let profile = profiles::read(&path, baseline)?;
-    let index = store_profile(app, profile, None)?;
-    app.note = format!(
-        "Imported “{}”. Choose it in Profiles to load into a custom slot.",
-        app.config.eq_library[index].name
-    )
-    .into();
-    Ok(())
+    choose_profile_file(app, ProfileFile::Import(baseline))
 }
 fn export_profile(app: &mut App, profile: Profile) -> std::result::Result<(), String> {
-    let Some(path) = app.shell.choose_file(true)? else {
-        return Ok(());
-    };
-    profiles::write(&path, &profile)?;
-    app.note = "EQ profile exported. It can be imported on another PC.".into();
+    choose_profile_file(app, ProfileFile::Export(profile))
+}
+
+fn choose_profile_file(app: &mut App, action: ProfileFile) -> Result<(), String> {
+    if app.pending_profile_file.is_some() {
+        return Err("Finish or cancel the open file dialog first.".into());
+    }
+    let save = matches!(action, ProfileFile::Export(_));
+    app.pending_profile_file = Some(action);
+    match app.shell.choose_file(save) {
+        #[cfg(any(windows, test))]
+        Ok(FileSelection::Ready(path)) => profile_file_selected(app, Ok(path)),
+        #[cfg(any(target_os = "linux", test))]
+        Ok(FileSelection::Pending) => {}
+        Err(error) => {
+            app.pending_profile_file = None;
+            return Err(error);
+        }
+    }
     Ok(())
+}
+
+/// Completes the one outstanding request using the tuning captured when it
+/// opened. Changes to the selected slot while a portal is open cannot alter it.
+pub(in crate::ui) fn profile_file_selected(app: &mut App, result: Result<Option<PathBuf>, String>) {
+    let Some(action) = app.pending_profile_file.take() else {
+        return;
+    };
+    let result = (|| {
+        let Some(path) = result? else {
+            return Ok::<_, String>(());
+        };
+        match action {
+            ProfileFile::Import(baseline) => {
+                let profile = profiles::read(&path, baseline)?;
+                let index = store_profile(app, profile, None)?;
+                app.note = format!(
+                    "Imported “{}”. Choose it in Profiles to load into a custom slot.",
+                    app.config.eq_library[index].name
+                )
+                .into();
+            }
+            ProfileFile::Export(profile) => {
+                profiles::write(&path, &profile)?;
+                app.note = "EQ profile exported. It can be imported on another PC.".into();
+            }
+        }
+        Ok(())
+    })();
+    if let Err(error) = result {
+        app.note = error.into();
+    };
+    request_draw(app);
 }
 fn load_profile(app: &mut App, index: usize) -> std::result::Result<(), String> {
     let profile = app

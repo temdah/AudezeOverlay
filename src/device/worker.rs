@@ -95,6 +95,14 @@ fn query_timeout(q: Query) -> Duration {
         _ => 100,
     })
 }
+/// How long a control change may wait for its readback before it is reported as
+/// unconfirmed. Switching sidetone on is measured to take up to about a second.
+fn confirm_deadline(q: Query) -> Duration {
+    Duration::from_millis(match q {
+        Query::Side => 2000,
+        _ => 900,
+    })
+}
 fn query_interval(q: Query) -> Duration {
     Duration::from_millis(match q {
         Query::Mix => 50,
@@ -563,7 +571,16 @@ pub fn start(
                             // A slow secondary query gets a cooldown instead of
                             // repeatedly occupying the queue ahead of the mix dial.
                             if q != Query::Mix {
-                                due[q as usize] = Some(Instant::now() + query_interval(q));
+                                // The headset can be busy applying a write for longer than
+                                // the query timeout. A readback someone is waiting for is
+                                // asked again soon, within the confirmation deadline,
+                                // instead of after the background interval.
+                                let retry = if waiting.iter().any(|(wq, _, _)| *wq == q) {
+                                    Duration::from_millis(50)
+                                } else {
+                                    query_interval(q)
+                                };
+                                due[q as usize] = Some(Instant::now() + retry);
                             }
                             if q == Query::Battery {
                                 state.battery = None;
@@ -624,7 +641,7 @@ pub fn start(
                                 state_may_have_changed = true;
                             }
                             false
-                        } else if started.elapsed() > Duration::from_millis(900) {
+                        } else if started.elapsed() > confirm_deadline(*q) {
                             if *q == Query::Mix {
                                 state.mix_revision = cmd.sequence;
                                 state_may_have_changed = true;

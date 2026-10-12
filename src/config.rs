@@ -196,11 +196,26 @@ impl Config {
     pub fn fit_layout(&mut self) {
         self.resize_canvas(self.width, self.height);
     }
+    /// Where preferences live: the user's local application data on Windows, the
+    /// XDG config directory elsewhere.
     pub fn path() -> PathBuf {
-        std::env::var_os("LOCALAPPDATA")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("AudezeOverlay")
+        #[cfg(windows)]
+        let (base, app) = (
+            std::env::var_os("LOCALAPPDATA").map(PathBuf::from),
+            "AudezeOverlay",
+        );
+        #[cfg(not(windows))]
+        let (base, app) = (
+            std::env::var_os("XDG_CONFIG_HOME")
+                .map(PathBuf::from)
+                .filter(|p| p.is_absolute())
+                .or_else(|| {
+                    std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config"))
+                }),
+            "audeze-overlay",
+        );
+        base.unwrap_or_else(|| PathBuf::from("."))
+            .join(app)
             .join("settings.json")
     }
     pub fn load() -> Self {

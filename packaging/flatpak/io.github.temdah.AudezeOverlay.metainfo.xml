@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.temdah.AudezeOverlay</id>
+  <name>Audeze Overlay</name>
+  <summary>Headset status and controls over your game</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <developer id="io.github.temdah">
+    <name>Audeze Overlay contributors</name>
+  </developer>
+  <description>
+    <p>A small native overlay for Audeze Maxwell headsets. It talks to the USB dongle directly, shows the game/chat mix, noise cancellation, sidetone and battery while you play, and changes them with the headset's controls. The Audeze app does not need to run.</p>
+    <p>The overlay needs a Wayland compositor with the layer-shell protocol, such as KDE Plasma, Sway, Hyprland, niri or COSMIC. GNOME's compositor does not offer it.</p>
+    <p>This is an unofficial community project and is not affiliated with Audeze.</p>
+  </description>
+  <launchable type="desktop-id">io.github.temdah.AudezeOverlay.desktop</launchable>
+  <url type="homepage">https://github.com/temdah/AudezeOverlay</url>
+  <url type="bugtracker">https://github.com/temdah/AudezeOverlay/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/temdah/AudezeOverlay/main/docs/screenshots/sound.png</image>
+      <caption>Game/chat mix, noise cancellation and sidetone</caption>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <requires>
+    <display_length compare="ge">400</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <releases>
+    <release version="1.0.5" date="2026-10-11"/>
+  </releases>
+</component>

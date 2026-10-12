@@ -86,22 +86,9 @@ impl Drop for Bitmap {
 }
 pub(super) unsafe fn create_tray_icon(painter: &Painter) -> HICON {
     let size = 32;
-    let Some(mut pix) = tiny_skia::Pixmap::new(size, size) else {
+    let Some(pix) = tray_icon_pixmap(painter, size) else {
         return HICON::default();
     };
-    let mut paint = tiny_skia::Paint::default();
-    paint.set_color_rgba8(245, 245, 245, 255);
-    // The wordmark SVG contains the symbol at x=0..29, y=0..24.
-    // Draw those original vector paths only; no tiny wordmark in the tray.
-    for path in painter.logo.iter().filter(|p| p.bounds().right() < 30.) {
-        pix.fill_path(
-            path,
-            &paint,
-            tiny_skia::FillRule::Winding,
-            tiny_skia::Transform::from_translate(1.5, 4.),
-            None,
-        );
-    }
     let info = BITMAPINFO {
         bmiHeader: BITMAPINFOHEADER {
             biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
