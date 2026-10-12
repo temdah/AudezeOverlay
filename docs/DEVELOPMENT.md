@@ -106,7 +106,8 @@ unsupported push notifications.
 `.github/workflows/windows.yml` runs on every push, pull request and manual
 workflow run. It checks formatting and Clippy (warnings are errors), runs Rust tests, verifies rendered layouts,
 and creates an x64 portable ZIP, per-user installer and SHA-256
-checksums. Open **Actions → Windows build and release → Artifacts → windows-x64**
+checksums. It also calls `.github/workflows/linux.yml` for Linux checks, the
+Linux archive and the offline Flatpak build. Open **Actions → Build and release → Artifacts → windows-x64**
 for development builds. Layout preview images are a separate artifact.
 
 Successful pushes to `main` automatically publish a new package version as the
@@ -129,7 +130,14 @@ maintenance and documentation changes land without duplicating a release.
 For a release from another branch, push a `v` tag matching its package version;
 its matching release-notes file is also required. Hyphenated versions are prereleases.
 
-`tools/publish-release.ps1` uploads the installer, portable ZIP and checksums to a
+Publication waits for Windows, Linux and Flatpak jobs from the same workflow run
+and commit. Named artifacts are downloaded separately, then
+`tools/prepare-release-downloads.ps1` verifies the Windows/archive checksums and
+creates one `SHA256SUMS.txt` for all four downloads. Missing or empty packages and
+invalid checksums stop publication. Manual Linux-only runs create artifacts only.
+
+`tools/publish-release.ps1` uploads the Windows installer, portable ZIP,
+experimental Linux archive, Flatpak bundle and combined checksums to a
 draft before publishing. A retry can repair a draft but cannot overwrite a public
 release. Superseded main builds do not replace Latest. Run
 `tools/test-publish-release.ps1` locally to check this behavior without credentials

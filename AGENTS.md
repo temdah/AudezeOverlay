@@ -193,8 +193,11 @@ and `-Target x86_64-pc-windows-gnullvm`. Inspect archive contents and checksums.
   an intended versioned release; main publication creates the matching tag itself.
 - Publication is complete only after build and release jobs succeed and
   `https://api.github.com/repos/temdah/AudezeOverlay/releases/latest` has the
-  expected commit in its notes and the three intended assets:
-  `Audeze-Overlay-Setup.exe`, `Audeze-Overlay-Portable.zip`, `SHA256SUMS.txt`.
+  expected commit in its notes and the five intended assets:
+  `Audeze-Overlay-Setup.exe`, `Audeze-Overlay-Portable.zip`,
+  `Audeze-Overlay-Linux-x86_64.tar.gz`, `Audeze-Overlay.flatpak`, `SHA256SUMS.txt`.
+  All build jobs must succeed for the same commit. Label Linux experimental and
+  link its setup/compatibility guide separately from the Windows downloads.
   Verify downloads and What's new. A tag alone is not a published release.
 - Preserve the clear recommended-installer and portable-option release format.
   Keep licenses inside packages. Do not upload the whole local output directory,

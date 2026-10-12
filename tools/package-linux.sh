@@ -1,8 +1,8 @@
 #!/bin/sh
 # Builds the Linux archive from an already built release binary:
 #   tools/package-linux.sh [BINARY] [OUTPUT_DIR]
-# Defaults: target/release/audeze-overlay and dist/. This is a CI/test artifact;
-# releases are still assembled by tools/package.ps1 and the Windows workflow.
+# Defaults: target/release/audeze-overlay and dist/. The release workflow combines
+# this archive with the Flatpak and Windows packages from the same build run.
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)

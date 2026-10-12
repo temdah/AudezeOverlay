@@ -15,8 +15,11 @@ additional hardware is not yet verified and non-ANC custom EQ editing is disable
 [What's new](https://github.com/temdah/AudezeOverlay/releases/latest) ·
 [Documentation](docs/README.md)
 
-**Linux (experimental, Wayland):** see [Linux](docs/LINUX.md). Development builds
-are produced by CI as a test archive; there is no Linux release download yet.
+**Linux (experimental, Wayland, x86_64):**
+[Flatpak](https://github.com/temdah/AudezeOverlay/releases/latest/download/Audeze-Overlay.flatpak) ·
+[Linux archive](https://github.com/temdah/AudezeOverlay/releases/latest/download/Audeze-Overlay-Linux-x86_64.tar.gz) ·
+[Setup and compatibility](docs/LINUX.md#install).
+Requires a host udev rule and a desktop with layer-shell; GNOME and X11 are not supported.
 
 ## One overlay, your layout
 

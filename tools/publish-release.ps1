@@ -25,7 +25,7 @@ function Assert-ReleaseAssets {
     param($Release)
     $actual = @($Release.assets | ForEach-Object name)
     if ($actual.Count -ne $assetNames.Count -or @(Compare-Object $assetNames $actual).Count) {
-        throw 'Release must contain exactly the installer, portable ZIP and checksums'
+        throw 'Release must contain exactly the Windows installer, portable ZIP, Linux archive, Flatpak and checksums'
     }
     if (@($Release.assets | Where-Object { $_.size -le 0 }).Count) {
         throw 'Release contains an empty download'
@@ -47,7 +47,7 @@ if (!$mainBuild -and $RefName -ne "v$version") { throw 'Release tag must match C
 $tag = "v$version"
 $title = "Audeze Overlay $version"
 $prerelease = $tag.Contains('-')
-$assetNames = @('Audeze-Overlay-Setup.exe', 'Audeze-Overlay-Portable.zip', 'SHA256SUMS.txt')
+$assetNames = @('Audeze-Overlay-Setup.exe', 'Audeze-Overlay-Portable.zip', 'Audeze-Overlay-Linux-x86_64.tar.gz', 'Audeze-Overlay.flatpak', 'SHA256SUMS.txt')
 $files = @($assetNames | ForEach-Object { (Get-Item -LiteralPath (Join-Path $ArtifactDirectory $_)).FullName })
 
 # Read all pages so rerunning an older tag cannot accidentally create a duplicate.
@@ -89,8 +89,12 @@ $notesPath = Join-Path $ArtifactDirectory 'release-notes.txt'
     "**[Install Audeze Overlay — recommended]($download/Audeze-Overlay-Setup.exe)**", '',
     'Run the installer, then open Audeze Overlay from the Start menu.', '',
     "[Portable ZIP — no installation]($download/Audeze-Overlay-Portable.zip): extract and run Audeze Overlay.exe.", '',
+    '## Download for Linux (64-bit, experimental)', '',
+    "[Flatpak bundle]($download/Audeze-Overlay.flatpak) · [Linux archive]($download/Audeze-Overlay-Linux-x86_64.tar.gz)", '',
+    "**[Read the Linux setup guide first](https://github.com/$Repository/blob/$tag/docs/LINUX.md#install).** Both options require a host udev rule for headset access.", '',
+    'Requires Wayland with layer-shell (such as KDE Plasma or Sway). GNOME and X11 are not supported. Contributor hardware testing covers the original Maxwell Xbox dongle on KDE Plasma; other Linux configurations remain unverified. Expect bugs.', '',
     '<details>', '<summary>Package details</summary>', '',
-    'Both downloads include licenses. Packages are unsigned. Source code archives are for developers.', '',
+    'All packages include licenses. Packages are unsigned. SHA256SUMS.txt covers all four downloads. Source code archives are for developers.', '',
     "Built from commit $CommitSha.", '',
     '</details>'
 ) | Set-Content -LiteralPath $notesPath -Encoding utf8

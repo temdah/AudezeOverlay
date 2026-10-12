@@ -4,8 +4,9 @@
 
 > **Status: experimental.** The Linux build is a native Wayland application with
 > the same overlay, controls and EQ as Windows. Contributor testing covers one
-> headset and one desktop (below). There is no Linux release download yet; CI builds a test
-> archive for each push.
+> headset and one desktop (below). Download the Flatpak bundle or Linux archive from
+> [Releases](https://github.com/temdah/AudezeOverlay/releases/latest).
+> Both are experimental and may contain bugs.
 
 ## What you get
 
@@ -30,11 +31,28 @@ directly: no driver, no daemon and no libudev.
 
 ## Install
 
-From the experimental CI archive, or a source checkout after
-`cargo build --release`:
+Choose one package for **x86_64**. Both need Wayland with layer-shell and the
+[host udev rule](#allowing-access-to-the-headset); installing a Flatpak does not
+grant headset access by itself. GNOME and X11 are not supported.
+
+### Linux archive
+
+Download `Audeze-Overlay-Linux-x86_64.tar.gz` from Releases, then:
 
 ```sh
-./install.sh --udev          # or packaging/linux/install.sh --udev from a checkout
+tar -xzf Audeze-Overlay-Linux-x86_64.tar.gz
+cd Audeze-Overlay-Linux-x86_64
+./install.sh --udev
+```
+
+The prebuilt archive is built on Ubuntu 24.04 and requires glibc 2.39 or newer,
+libxkbcommon, fontconfig and a usable font (for example DejaVu Sans). For older
+distributions, try the Flatpak or build from source.
+
+From a source checkout after `cargo build --release`:
+
+```sh
+packaging/linux/install.sh --udev
 ```
 
 This installs the program, desktop entry and icons under `~/.local` and, with
@@ -52,6 +70,22 @@ desktop has no such portal, bind `audeze-overlay --toggle` to a key in its
 shortcut settings (on Sway or Hyprland, a keybinding that runs the command).
 
 ### Flatpak
+
+Install Flatpak using your distribution's package manager, download
+`Audeze-Overlay.flatpak` from Releases, then run:
+
+```sh
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install --user ./Audeze-Overlay.flatpak
+flatpak run io.github.temdah.AudezeOverlay
+```
+
+The installer fetches the Freedesktop 25.08 runtime if needed. Install the
+[host udev rule](#allowing-access-to-the-headset) before using headset controls.
+For future updates, download the newer bundle and repeat the install command.
+This is a GitHub download, not a Flathub listing.
+
+#### Build the Flatpak yourself
 
 `packaging/flatpak/` holds a manifest built the way Flathub requires: offline,
 from vendored Cargo sources (`tools/sync-cargo-sources.sh` regenerates them and CI
@@ -104,13 +138,18 @@ Linux. The same identities remain experimental on Windows; see the
 
 ## Allowing access to the headset
 
-Install the rule from this repository once, then reconnect the dongle:
+The archive's `./install.sh --udev` installs the rule for you. For a Flatpak
+installation, [download the rule](https://raw.githubusercontent.com/temdah/AudezeOverlay/v1.0.6/packaging/linux/70-audeze-overlay.rules)
+as `70-audeze-overlay.rules`. From the folder containing that file, run:
 
 ```sh
-sudo install -m 0644 packaging/linux/70-audeze-overlay.rules /etc/udev/rules.d/
+sudo install -m 0644 70-audeze-overlay.rules /etc/udev/rules.d/
 sudo udevadm control --reload
 sudo udevadm trigger --subsystem-match=hidraw --action=change
 ```
+
+Then reconnect the dongle. In a source checkout, the rule is under
+`packaging/linux/70-audeze-overlay.rules`.
 
 The rule lists only the twelve USB product IDs the application recognizes
 (`docs/DEVICE_PROTOCOL.md`). It uses `TAG+="uaccess"`, so access goes to the

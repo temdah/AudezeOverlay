@@ -1,11 +1,9 @@
 name: Linux build and checks
 
-# Checks and a test archive. Nothing here publishes a release or replaces a
-# download; Windows packaging and releases stay in windows.yml.
+# Called by the build/release workflow so all packages belong to the same run.
+# Manual runs produce artifacts only; publication remains in windows.yml.
 on:
-  push:
-    branches: ['**']
-  pull_request:
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -76,7 +74,7 @@ jobs:
 
   flatpak:
     # Builds the Flatpak offline from the vendored Cargo sources, as Flathub would,
-    # and keeps the bundle as a test artifact. It is not published anywhere.
+    # and uploads the bundle for the caller's release job.
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     container:

@@ -1,6 +1,6 @@
 [package]
 name = "audeze-overlay"
-version = "1.0.5"
+version = "1.0.6"
 edition = "2021"
 description = "A small native sound-status overlay for Audeze Maxwell headsets (Windows, and Linux on Wayland)"
 license = "MIT"

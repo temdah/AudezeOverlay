@@ -5,7 +5,6 @@ $global:AudezeReleaseTestsha = '1234567890abcdef1234567890abcdef12345678'
 $global:AudezeReleaseTestbase = 'abcdef1234567890abcdef1234567890abcdef12'
 $version = (Select-String -LiteralPath "$PSScriptRoot/../Cargo.toml" -Pattern '^version = "([^"]+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
 $global:AudezeReleaseTesttag = "v$version"
-$global:AudezeReleaseTestnames = @('Audeze-Overlay-Setup.exe', 'Audeze-Overlay-Portable.zip', 'SHA256SUMS.txt')
 $testDirectory = Join-Path ([IO.Path]::GetTempPath()) ("audeze-release-test-" + [guid]::NewGuid())
 $null = New-Item -ItemType Directory -Path $testDirectory
 
@@ -25,7 +24,26 @@ function Reset-Fixture {
         latest = 'development'
     }
     Set-Content -LiteralPath (Join-Path $testDirectory 'highlights.md') -Value 'Hear EQ changes live and keep your favorite profiles.'
-    foreach ($name in $global:AudezeReleaseTestnames) { Set-Content -LiteralPath (Join-Path $testDirectory $name) -Value 'fixture' }
+    $artifactRoot = Join-Path $testDirectory 'artifacts'
+    foreach ($platform in @('windows', 'linux', 'flatpak')) {
+        $null = New-Item -ItemType Directory -Force -Path (Join-Path $artifactRoot $platform)
+    }
+    $groups = @{
+        windows = @('Audeze-Overlay-Setup.exe', 'Audeze-Overlay-Portable.zip')
+        linux = @('Audeze-Overlay-Linux-x86_64.tar.gz')
+        flatpak = @('Audeze-Overlay.flatpak')
+    }
+    foreach ($platform in $groups.Keys) {
+        $directory = Join-Path $artifactRoot $platform
+        $lines = foreach ($name in $groups[$platform]) {
+            $path = Join-Path $directory $name
+            Set-Content -LiteralPath $path -Value "fixture: $name"
+            "{0}  {1}" -f (Get-FileHash -LiteralPath $path).Hash.ToLowerInvariant(), $name
+        }
+        if ($platform -eq 'windows') { $lines | Set-Content -LiteralPath (Join-Path $directory 'SHA256SUMS.txt') }
+        if ($platform -eq 'linux') { $lines | Set-Content -LiteralPath (Join-Path $directory 'Audeze-Overlay-Linux-x86_64.tar.gz.sha256') }
+    }
+    & "$PSScriptRoot/prepare-release-downloads.ps1" -ArtifactRoot $artifactRoot -OutputDirectory $testDirectory
 }
 
 function gh {
@@ -87,7 +105,7 @@ function gh {
             Assert-That $release.draft 'Published assets must never be overwritten'
             if ($global:AudezeReleaseTeststate.failUpload) { $global:LASTEXITCODE = 1; return }
             $uploads = @($a[3..($a.IndexOf('--repo') - 1)])
-            Assert-That ($uploads.Count -eq 3) 'Unexpected uploaded file count'
+            Assert-That ($uploads.Count -eq 5) 'Unexpected uploaded file count'
             $release.assets = @($uploads | ForEach-Object { @{ name = [IO.Path]::GetFileName($_); size = 7 } })
             if ($global:AudezeReleaseTeststate.supersedeAfterUpload) { $global:AudezeReleaseTeststate.head = $global:AudezeReleaseTestbase }
         }
@@ -96,7 +114,7 @@ function gh {
             if ('--title' -in $a) { $release.name = $a[$a.IndexOf('--title') + 1] }
             if ('--notes-file' -in $a) { $release.body = Get-Content -Raw -LiteralPath $a[$a.IndexOf('--notes-file') + 1] }
             if ('--draft=false' -in $a) {
-                Assert-That ($release.assets.Count -eq 3) 'Published before downloads were uploaded'
+                Assert-That ($release.assets.Count -eq 5) 'Published before downloads were uploaded'
                 $release.draft = $false
                 $release.published_at = '2026-02-01T00:00:00Z'
                 $release.prerelease = '--prerelease=true' -in $a
@@ -121,6 +139,16 @@ try {
     Assert-That ($new.name -eq "Audeze Overlay $version") 'Release title must contain only the app name and version'
     Assert-That ($old.assets[0].name -eq 'old.zip' -and $old.name.StartsWith('Archived')) 'Old release was not preserved in history'
     Assert-That ($new.body.Contains("/download/$global:AudezeReleaseTesttag/Audeze-Overlay-Setup.exe")) 'Installer link points to a different release'
+    foreach ($name in @('Audeze-Overlay-Linux-x86_64.tar.gz', 'Audeze-Overlay.flatpak')) {
+        Assert-That ($new.body.Contains("/download/$global:AudezeReleaseTesttag/$name")) 'Linux link points to a different release'
+    }
+    Assert-That ($new.body.Contains('experimental') -and $new.body.Contains("/blob/$global:AudezeReleaseTesttag/docs/LINUX.md#install")) 'Linux caveats or versioned instructions missing'
+    $checksums = @(Get-Content -LiteralPath (Join-Path $testDirectory 'SHA256SUMS.txt'))
+    Assert-That ($checksums.Count -eq 4) 'Combined checksum manifest does not cover all downloads'
+    foreach ($line in $checksums) {
+        $hash, $name = $line -split '  ', 2
+        Assert-That ((Get-FileHash -LiteralPath (Join-Path $testDirectory $name)).Hash -eq $hash) 'Combined checksum is incorrect'
+    }
     $callsBefore = $global:AudezeReleaseTeststate.calls.Count
     Invoke-Publisher
     Assert-That (@($global:AudezeReleaseTeststate.calls | Select-Object -Skip $callsBefore | Where-Object { $_[0] -eq 'release' }).Count -eq 0) 'Rerun mutated a published release'
@@ -177,9 +205,33 @@ try {
     try { Invoke-Publisher } catch { $failed = $true }
     Assert-That ($failed -and $global:AudezeReleaseTeststate.releases.Count -eq 1) 'Mismatched tag was published'
 
+    # Missing, empty or corrupt Linux downloads must never become public.
+    foreach ($case in @('missing-flatpak', 'empty-flatpak', 'corrupt-linux', 'missing-checksum', 'unexpected-checksum')) {
+        Reset-Fixture
+        $artifactRoot = Join-Path $testDirectory 'artifacts'
+        $bundle = Join-Path $artifactRoot 'flatpak/Audeze-Overlay.flatpak'
+        $manifest = Join-Path $artifactRoot 'linux/Audeze-Overlay-Linux-x86_64.tar.gz.sha256'
+        switch ($case) {
+            'missing-flatpak' { Remove-Item -LiteralPath $bundle }
+            'empty-flatpak' { [IO.File]::WriteAllBytes($bundle, [byte[]]@()) }
+            'corrupt-linux' { Add-Content -LiteralPath (Join-Path $artifactRoot 'linux/Audeze-Overlay-Linux-x86_64.tar.gz') -Value 'corruption' }
+            'missing-checksum' { Set-Content -LiteralPath $manifest -Value '' }
+            'unexpected-checksum' { Add-Content -LiteralPath $manifest -Value (('a' * 64) + '  ../other') }
+        }
+        $failed = $false
+        try { & "$PSScriptRoot/prepare-release-downloads.ps1" -ArtifactRoot $artifactRoot -OutputDirectory $testDirectory } catch { $failed = $true }
+        Assert-That $failed "Incomplete/corrupt packages accepted: $case"
+    }
+
+    Reset-Fixture
+    Remove-Item -LiteralPath (Join-Path $testDirectory 'Audeze-Overlay.flatpak')
+    $failed = $false
+    try { Invoke-Publisher } catch { $failed = $true }
+    Assert-That ($failed -and $global:AudezeReleaseTeststate.releases.Count -eq 1) 'Publisher accepted missing Linux download'
+
     $realNotes = Get-Content -Raw -LiteralPath "$PSScriptRoot/../docs/releases/$version.md"
     Assert-That (![string]::IsNullOrWhiteSpace($realNotes)) 'Current version is missing release highlights'
-    Write-Host 'PASS: versioned releases, curated notes, reruns, draft recovery, stale builds, API errors and missing highlights.'
+    Write-Host 'PASS: combined package checksums, missing/corrupt Linux assets, versioned releases, curated notes, reruns, draft recovery, stale builds, API errors and missing highlights.'
 } finally {
     # Only this test's uniquely named, resolved temporary directory is removed.
     $resolved = [IO.Path]::GetFullPath($testDirectory)
